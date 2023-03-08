@@ -136,9 +136,6 @@ def crawl_annotation_collection(url, parent_path):
     f = open(parent_path + '/annotationCollection.json', 'w+')
     f.write(json.dumps(anno_col_json))
 
-    # TODO: remove this for TextAPI 1.3.0 support
-    anno_col_json = anno_col_json['annotationCollection']
-
     if anno_col_json['first']:
         crawl_annotation_page(anno_col_json['first'], parent_path)
 
@@ -146,9 +143,6 @@ def crawl_annotation_collection(url, parent_path):
 def crawl_annotation_page(url, parent_path):
     r = requests.get(url)
     anno_page_json = r.json()
-
-    # TODO: remove this for TextAPI 1.3.0 support
-    anno_page_json = anno_page_json['annotationPage']
 
     f = open(parent_path + '/annotationPage.json', 'w+')
     f.write(json.dumps(anno_page_json))
