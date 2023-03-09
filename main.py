@@ -18,8 +18,19 @@ output_dir = 'output'
 collections_dir = 'collections'
 manifests_dir = 'manifests'
 items_dir = 'items'
-manifest_filters = []
+manifest_filters = [
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r177/manifest.json',
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r17b/manifest.json',
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r17d/manifest.json',
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7vd/manifest.json',
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r176/manifest.json',
+    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7tp/manifest.json'
+]
+# manifest_filters = []
 crawl_annotations = True
+
+server_base_url = 'https://ahikar-dev.sub.uni-goettingen.de/api'
+output_base_url = 'http://localhost:8181/ahiqar'
 
 for i, arg in enumerate(sys.argv):
     argNumber = i + 1
@@ -31,13 +42,14 @@ for i, arg in enumerate(sys.argv):
 
 
 def crawl_collection(url):
-    url_parts = url.split('/')
+    url_parts = url.replace(server_base_url + '/', '').split('/')
 
     if url_parts[-1] != 'collection.json':
         return
-    slug = url_parts[-2]
 
-    path = output_dir + '/' + slug
+    url_parts.pop()
+
+    path = output_dir + '/' + '/'.join(url_parts)
 
     os.makedirs(path, exist_ok=True)
 
@@ -47,51 +59,60 @@ def crawl_collection(url):
     print('collection: ' + collection_json['title'][0]['title'])
 
     f = open(path + '/collection.json', 'w+')
-    f.write(json.dumps(collection_json))
+    f.write(replace_base_url(json.dumps(collection_json)))
+    f.close()
 
     collection_sequence = collection_json['sequence']
 
     if collection_json['sequence']:
         for seq_item in collection_sequence:
             if not manifest_filters or manifest_filters.count(seq_item['id']) > 0:
-                crawl_manifest(seq_item['id'], path)
+                crawl_manifest(seq_item['id'])
 
 
-def crawl_manifest(url, parent_path):
-    url_arr = url.split('/')
-    if url_arr[-1] != 'manifest.json':
+def crawl_manifest(url):
+    url_parts = url.replace(server_base_url + '/', '').split('/')
+
+    if url_parts[-1] != 'manifest.json':
         return
 
-    dir_name = url_arr[-2]
+    dir_name = url_parts[-2]
     print('manifest: ' + dir_name)
 
-    path = (parent_path or (output_dir + '/' + manifests_dir)) + '/' + dir_name
+    url_parts.pop()
+
+    path = output_dir + '/' + '/'.join(url_parts)
+
     os.makedirs(path, exist_ok=True)
 
     r = requests.get(url)
     manifest_json = r.json()
 
     f = open(path + '/manifest.json', 'w+')
-    f.write(json.dumps(manifest_json))
+    f.write(replace_base_url(json.dumps(manifest_json)))
+    f.close()
 
     sequence = manifest_json['sequence']
 
     if sequence:
         for i, seq_item in enumerate(sequence):
             if example_mode is False:
-                crawl_item(seq_item['id'], path)
+                crawl_item(seq_item['id'])
             else:
-                if i < 3:
-                    crawl_item(seq_item['id'], path)
+                if i < 2 or i > len(sequence) - 3:
+                    crawl_item(seq_item['id'])
 
 
-def crawl_item(url, parent_path=None):
-    [*rest, item_slug, item_revision, file_name] = url.split('/')
+def crawl_item(url):
+    url_parts = url.replace(server_base_url + '/', '').split('/')
 
+    if url_parts[-1] != 'item.json':
+        return
+
+    item_slug = str(url_parts[-3])
     print('item: ' + item_slug)
 
-    path = (parent_path or (output_dir + '/' + items_dir)) + '/' + item_slug + '/' + item_revision
-    os.makedirs(path, exist_ok=True)
+    url_parts.pop()
 
     r = requests.get(url)
     item_json = None
@@ -104,48 +125,87 @@ def crawl_item(url, parent_path=None):
     if not item_json:
         return
 
-    f = open(path + '/' + file_name, 'w+')
-    f.write(json.dumps(item_json))
+    path = output_dir + '/' + '/'.join(url_parts)
 
-    crawl_content(item_json['content'], path)
+    os.makedirs(path, exist_ok=True)
+
+    f = open(path + '/item.json', 'w+')
+    f.write(replace_base_url(json.dumps(item_json)))
+    f.close()
+
+    crawl_content(item_json['content'])
 
     if crawl_annotations and item_json['annotationCollection']:
-        crawl_annotation_collection(item_json['annotationCollection'], path)
+        crawl_annotation_collection(item_json['annotationCollection'])
 
 
-def crawl_content(content_arr, parent_path):
+def crawl_content(content_arr):
     if not content_arr:
         return
 
     for content_item in content_arr:
         url = content_item['url']
-        [*rest, content_type, content_name] = url.split('/')
+        url_parts = url.replace(server_base_url + '/', '').split('/')
+        content_file_name = url_parts[-1]
 
         r = requests.get(url)
         content = r.text
 
-        os.makedirs(parent_path + '/' + content_type, exist_ok=True)
+        url_parts.pop()
 
-        f = open(parent_path + '/' + content_type + '/' + content_name, 'w+', encoding='utf-8')
+        path = output_dir + '/' + '/'.join(url_parts)
+
+        os.makedirs(path, exist_ok=True)
+
+        f = open(path + '/' + content_file_name, 'w+', encoding='utf-8')
         f.write(content)
+        f.close()
 
 
-def crawl_annotation_collection(url, parent_path):
+def crawl_annotation_collection(url):
+    url_parts = url.replace(server_base_url + '/', '').split('/')
+
+    if url_parts[-1] != 'annotationCollection.json':
+        return
+
+    url_parts.pop()
+
     r = requests.get(url)
     anno_col_json = r.json()
-    f = open(parent_path + '/annotationCollection.json', 'w+')
-    f.write(json.dumps(anno_col_json))
+
+    path = output_dir + '/' + '/'.join(url_parts)
+
+    os.makedirs(path, exist_ok=True)
+
+    f = open(path + '/annotationCollection.json', 'w+')
+    f.write(replace_base_url(json.dumps(anno_col_json)))
+    f.close()
 
     if anno_col_json['first']:
-        crawl_annotation_page(anno_col_json['first'], parent_path)
+        crawl_annotation_page(anno_col_json['first'])
 
 
-def crawl_annotation_page(url, parent_path):
+def crawl_annotation_page(url):
+    url_parts = url.replace(server_base_url + '/', '').split('/')
+
+    if url_parts[-1] != 'annotationPage.json':
+        return
+
+    url_parts.pop()
+
     r = requests.get(url)
     anno_page_json = r.json()
 
-    f = open(parent_path + '/annotationPage.json', 'w+')
-    f.write(json.dumps(anno_page_json))
+    path = output_dir + '/' + '/'.join(url_parts)
+
+    os.makedirs(path, exist_ok=True)
+
+    f = open(path + '/annotationPage.json', 'w+')
+    f.write(replace_base_url(json.dumps(anno_page_json)))
+    f.close()
+
+def replace_base_url(data_string):
+    return data_string.replace(server_base_url, output_base_url)
 
 
 def main():
