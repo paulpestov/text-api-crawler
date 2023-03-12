@@ -26,7 +26,7 @@ manifest_filters = [
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r176/manifest.json',
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7tp/manifest.json'
 ]
-# manifest_filters = []
+#manifest_filters = []
 crawl_annotations = True
 
 server_base_url = 'https://ahikar-dev.sub.uni-goettingen.de/api'
@@ -58,9 +58,8 @@ def crawl_collection(url):
 
     print('collection: ' + collection_json['title'][0]['title'])
 
-    f = open(path + '/collection.json', 'w+')
-    f.write(replace_base_url(json.dumps(collection_json)))
-    f.close()
+    save_clean_file(path + '/collection.json', collection_json)
+
 
     collection_sequence = collection_json['sequence']
 
@@ -88,11 +87,10 @@ def crawl_manifest(url):
     r = requests.get(url)
     manifest_json = r.json()
 
-    f = open(path + '/manifest.json', 'w+')
-    f.write(replace_base_url(json.dumps(manifest_json)))
-    f.close()
+    save_clean_file(path + '/manifest.json', manifest_json)
 
     sequence = manifest_json['sequence']
+    support = manifest_json['support']
 
     if sequence:
         for i, seq_item in enumerate(sequence):
@@ -101,6 +99,19 @@ def crawl_manifest(url):
             else:
                 if i < 2 or i > len(sequence) - 3:
                     crawl_item(seq_item['id'])
+
+    if support:
+        for i, support_item in enumerate(support):
+            sup_url = support_item['url']
+            sup_url_parts = sup_url.replace(server_base_url + '/', '').split('/')
+            sup_file_name = sup_url_parts[-1]
+            sup_url_parts.pop()
+            sup_path = output_dir + '/' + '/'.join(sup_url_parts)
+            sup_req = requests.get(sup_url)
+            sup_content = sup_req.text
+
+            os.makedirs(sup_path, exist_ok=True)
+            save_clean_file(sup_path + '/' + sup_file_name, sup_content)
 
 
 def crawl_item(url):
@@ -129,9 +140,7 @@ def crawl_item(url):
 
     os.makedirs(path, exist_ok=True)
 
-    f = open(path + '/item.json', 'w+')
-    f.write(replace_base_url(json.dumps(item_json)))
-    f.close()
+    save_clean_file(path + '/item.json', item_json)
 
     crawl_content(item_json['content'])
 
@@ -157,9 +166,7 @@ def crawl_content(content_arr):
 
         os.makedirs(path, exist_ok=True)
 
-        f = open(path + '/' + content_file_name, 'w+', encoding='utf-8')
-        f.write(content)
-        f.close()
+        save_clean_file(path + '/' + content_file_name, content)
 
 
 def crawl_annotation_collection(url):
@@ -177,9 +184,7 @@ def crawl_annotation_collection(url):
 
     os.makedirs(path, exist_ok=True)
 
-    f = open(path + '/annotationCollection.json', 'w+')
-    f.write(replace_base_url(json.dumps(anno_col_json)))
-    f.close()
+    save_clean_file(path + '/annotationCollection.json', anno_col_json)
 
     if anno_col_json['first']:
         crawl_annotation_page(anno_col_json['first'])
@@ -200,13 +205,18 @@ def crawl_annotation_page(url):
 
     os.makedirs(path, exist_ok=True)
 
-    f = open(path + '/annotationPage.json', 'w+')
-    f.write(replace_base_url(json.dumps(anno_page_json)))
-    f.close()
+    save_clean_file(path + '/annotationPage.json', anno_page_json)
 
 def replace_base_url(data_string):
     return data_string.replace(server_base_url, output_base_url)
 
+
+def save_clean_file(path, content):
+    content_is_string = isinstance(content, str)
+
+    f = open(path, 'w+', encoding="utf-8")
+    f.write(replace_base_url(content if content_is_string else json.dumps(content)))
+    f.close()
 
 def main():
     # get the start time
