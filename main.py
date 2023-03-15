@@ -18,6 +18,7 @@ output_dir = 'output'
 collections_dir = 'collections'
 manifests_dir = 'manifests'
 items_dir = 'items'
+mocks_dir = 'mocks'
 manifest_filters = [
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r177/manifest.json',
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r17b/manifest.json',
@@ -26,7 +27,7 @@ manifest_filters = [
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r176/manifest.json',
     'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7tp/manifest.json'
 ]
-#manifest_filters = []
+manifest_filters = []
 crawl_annotations = True
 
 server_base_url = 'https://ahikar-dev.sub.uni-goettingen.de/api'
@@ -60,7 +61,6 @@ def crawl_collection(url):
 
     save_clean_file(path + '/collection.json', collection_json)
 
-
     collection_sequence = collection_json['sequence']
 
     if collection_json['sequence']:
@@ -88,6 +88,8 @@ def crawl_manifest(url):
     manifest_json = r.json()
 
     save_clean_file(path + '/manifest.json', manifest_json)
+
+    return
 
     sequence = manifest_json['sequence']
     support = manifest_json['support']
@@ -140,12 +142,14 @@ def crawl_item(url):
 
     os.makedirs(path, exist_ok=True)
 
-    save_clean_file(path + '/item.json', item_json)
-
     crawl_content(item_json['content'])
+
+    item_json['image'] = crawl_image(item_json['image'])
 
     if crawl_annotations and item_json['annotationCollection']:
         crawl_annotation_collection(item_json['annotationCollection'])
+
+    save_clean_file(path + '/item.json', item_json)
 
 
 def crawl_content(content_arr):
@@ -168,6 +172,32 @@ def crawl_content(content_arr):
 
         save_clean_file(path + '/' + content_file_name, content)
 
+def crawl_image(image_obj):
+    url = image_obj['id']
+
+    if not url:
+        return
+
+    url_parts = url.replace(server_base_url + '/', '').split('/')
+
+    url_parts.pop()
+
+    path = output_dir + '/' + '/'.join(url_parts)
+
+    os.makedirs(path, exist_ok=True)
+
+    example_file_name = 'text-api.png'
+
+    if example_mode:
+        src_path = mocks_dir + '/text-api.png'
+        dst_path = path + '/text-api.png'
+
+        shutil.copy(src_path, dst_path)
+
+    url_parts = [server_base_url, *url_parts, example_file_name]
+
+    image_obj['id'] = '/'.join(url_parts)
+    return image_obj
 
 def crawl_annotation_collection(url):
     url_parts = url.replace(server_base_url + '/', '').split('/')
