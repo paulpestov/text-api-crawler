@@ -5,6 +5,8 @@ import shutil
 import sys
 import time
 
+# ==================== Configuration ====================
+
 # If True the crawler does not iterate over the complete collections, manifests and items but rather
 # only a small portion of the endpoints to just get an idea of how the API is structured.
 # This can be useful when you quickly want to create integration or end-to-end tests for your application and need some
@@ -32,6 +34,9 @@ crawl_annotations = True
 
 server_base_url = 'https://ahikar-dev.sub.uni-goettingen.de/api'
 output_base_url = 'http://localhost:8181/ahiqar'
+
+# =================== End Configuration ===================
+
 
 for i, arg in enumerate(sys.argv):
     argNumber = i + 1
