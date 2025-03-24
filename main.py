@@ -12,28 +12,21 @@ import time
 # This can be useful when you quickly want to create integration or end-to-end tests for your application and need some
 # real world data.
 
-example_mode = True
+example_mode = False
 
-collection_url = 'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/collection.json'
+collection_url = 'https://textapi.dev.vierwachen.sub.uni-goettingen.de/api/4w/reproduction/collection.json'
 
 output_dir = 'output'
 collections_dir = 'collections'
 manifests_dir = 'manifests'
 items_dir = 'items'
 mocks_dir = 'mocks'
-manifest_filters = [
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r177/manifest.json',
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r17b/manifest.json',
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r17d/manifest.json',
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7vd/manifest.json',
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r176/manifest.json',
-    'https://ahikar-dev.sub.uni-goettingen.de/api/textapi/ahikar/arabic-karshuni/3r7tp/manifest.json'
-]
+manifest_filters = []
 manifest_filters = []
 crawl_annotations = True
 
-server_base_url = 'https://ahikar-dev.sub.uni-goettingen.de/api'
-output_base_url = 'http://localhost:8181/ahiqar'
+server_base_url = 'https://textapi.dev.vierwachen.sub.uni-goettingen.de/api/4w'
+output_base_url = 'http://localhost:8181/4w'
 
 # =================== End Configuration ===================
 
@@ -94,8 +87,6 @@ def crawl_manifest(url):
 
     save_clean_file(path + '/manifest.json', manifest_json)
 
-    return
-
     sequence = manifest_json['sequence']
     support = manifest_json['support']
 
@@ -149,9 +140,10 @@ def crawl_item(url):
 
     crawl_content(item_json['content'])
 
-    item_json['image'] = crawl_image(item_json['image'])
+    if ('image' in item_json):
+        item_json['image'] = crawl_image(item_json['image'])
 
-    if crawl_annotations and item_json['annotationCollection']:
+    if crawl_annotations and ('annotationCollection' in item_json):
         crawl_annotation_collection(item_json['annotationCollection'])
 
     save_clean_file(path + '/item.json', item_json)
